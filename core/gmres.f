@@ -332,7 +332,7 @@ c     GMRES iteration.
 
       common /cgmres1/ y(lgmres)
       common /ctmp0/   wk1(lgmres),wk2(lgmres)
-      real alpha, l, temp, temp_ptr(1)
+      real alpha, l, temp, temp2(1),temp_ptr(1)
       integer outer
 
       logical iflag,if_hyb
@@ -388,15 +388,22 @@ c
          outer = outer+1
 
          if(iter.eq.0) then                   !      -1
+        write(6,*) 'rrrr 0000',r_gmres(1),ml_gmres(1)  
             call col3_acc    (r_gmres,ml_gmres,res,n) ! r = L  res
 c           call copy(r,res,n)
+        write(6,*) 'rrrr 1111',r_gmres(1),ml_gmres(1)  
          else
             !update residual
+        write(6,*) 'rrrr 2222',r_gmres(1),ml_gmres(1)  
             call copy_acc  (r_gmres,res,n)               ! r = res
+        write(6,*) 'rrrr 3333',r_gmres(1),ml_gmres(1)  
             call ax    (w_gmres,x_gmres,h1,h2,n)     ! w = A x
+        write(6,*) 'rrrr 4444',w_gmres(1),ml_gmres(1)  
             call add2s2_acc(r_gmres,w_gmres,-1.,n)       ! r = r - w
+        write(6,*) 'rrrr 5555',r_gmres(1),w_gmres(1)  
                                                      !      -1
             call col2_acc  (r_gmres,ml_gmres,n)          ! r = L   r
+        write(6,*) 'rrrr 6666',r_gmres(1),ml_gmres(1)  
          endif
 
 #ifdef _OPENACC
@@ -412,26 +419,35 @@ c        construct or acc routine"
          enddo
          temp = sqrt(temp)
 !$ACC END KERNELS
+        write(6,*) 'rrrr 7777',r_gmres(1)
 
-      call gop_acc(temp,temp_ptr,'+  ',1)
-
-!$ACC KERNELS PRESENT(gamma_gmres)
-      gamma_gmres(1) = temp
-!$ACC END KERNELS
+      temp2(1)=temp
+!$ACC DATA COPY(temp2) CREATE(temp_ptr)
+      call gop_acc(temp2,temp_ptr,'+  ',1)
+!$ACC END DATA 
+      temp = temp2(1)
+ccc!$ACC KERNELS PRESENT(gamma_gmres,tmp2)
+         gamma_gmres(1) = temp2(1)
+ccc!$ACC END KERNELS
 
 #else
          gamma_gmres(1) = sqrt(glsc3(r_gmres,r_gmres,wt,n)) ! gamma  = \/ (r,r)
          temp = gamma_gmres(1)
 #endif
+       
+        write(6,*) 'ttttt 0000',temp,gamma_gmres(1),norm_fac     
          if(iter.eq.0) then
             div0 = temp*norm_fac
             if (param(21).lt.0) tolpss=abs(param(21))*div0
          endif
 
          !check for lucky convergence
+        write(6,*) 'ttttt ----',tolpss,rnorm    
          rnorm = 0.
          if(temp .eq. 0.) goto 9000
+        write(6,*) 'tqqqq 0000',r_gmres(1),v_gmres(1,1),temp
          call cmult2_acc(v_gmres(1,1),r_gmres,1./temp,n) ! v  = r / gamma
+        write(6,*) 'tcccc 0000',r_gmres(1),v_gmres(1,1)
                                                    !  1            1
          do j=1,m
 
@@ -445,8 +461,10 @@ c        construct or acc routine"
             write(0,*), 'outer: ', outer
             write(0,*), 'iter:  ', iter
 #endif
+        write(6,*) 'tcccc 0000',w_gmres(1),mu_gmres(1),v_gmres(1,1)
                                                        !       -1
             call col3_acc(w_gmres,mu_gmres,v_gmres(1,j),n) ! w  = U   v
+        write(6,*) 'tcccc ----',w_gmres(1),mu_gmres(1),v_gmres(1,1)
                                                        !           j
 
 c . . . . . Overlapping Schwarz + coarse-grid . . . . . . .
@@ -459,6 +477,7 @@ c           MJO - 3/17/17 - for variable h1, h2 in time
 
             if (ifmgrid) then
                call h1mg_solve(z_gmres(1,j),w_gmres,if_hyb) ! z  = M   w
+        write(6,*) 'tzzzz ----',z_gmres(1,1)
             else                                            !  j
 c              FIXME: Only mgrid portion is implemented in ACC so far
                kfldfdm = ndim+1
@@ -503,8 +522,10 @@ c           parallelism.
                h_gmres(i,j) = temp
             enddo
 !$ACC END KERNELS
-
+  
+            write(6,*) 'ttttt hhh',  h_gmres(1,1)
             call gop_acc(h_gmres(1,j),wk1,'+  ',j)
+            write(6,*) 'ttttt ggg',  h_gmres(1,1)
 
 !$ACC KERNELS PRESENT(w_gmres, h_gmres, v_gmres)
             do i=1,j
@@ -528,6 +549,7 @@ c           parallelism.
 #endif
 
 ! Apply Givens rotations to new column
+            write(6,*) 'ttttt aaa' 
 !$ACC KERNELS PRESENT(h_gmres,c_gmres,s_gmres)
             do i=1,j-1
                temp = h_gmres(i,j)
@@ -540,10 +562,12 @@ c           parallelism.
                                                       !            ______
 #ifdef _OPENACC
             alpha = sqrt(glsc3_acc(w_gmres,w_gmres,wt,n)) ! alpha =  \/ (w,w)
+            write(6,*) 'ttttt bbb',alpha
 #else
             alpha = sqrt(glsc3(w_gmres,w_gmres,wt,n)) ! alpha =  \/ (w,w)
 #endif
             rnorm = 0.
+            write(6,*) 'ttttt 7777',alpha
 
             if(alpha.eq.0.) goto 900  !converged
 

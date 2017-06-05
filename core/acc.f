@@ -24,7 +24,7 @@ c-----------------------------------------------------------------------
 !$ACC ENTER DATA COPYIN(g1m1,g2m1,g3m1,g4m1,g5m1,g6m1,dxm1,dxtm1)
 !$ACC ENTER DATA COPYIN(bm1,binvm1,bintm1)
 
-      icalld=1
+      icalld=0
 
       endif
 
@@ -73,7 +73,7 @@ c-----------------------------------------------------------------------
 !$ACC ENTER DATA CREATE(w1,w2)
 !$ACC ENTER DATA CREATE(wk1,wk2)
 
-      icalld=1
+      icalld=0
 
       endif
 

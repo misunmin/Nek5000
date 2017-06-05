@@ -1099,21 +1099,19 @@ C
 C     Perform inner-product in double precision
 C
       real a(n),b(n),mult(n)
-      real tmp,work(1)
+      real tmp(1),work(1)
 
-      tmp = 0.0
-
+      tmp(1) = 0.0
+!$ACC DATA CREATE(work) COPYIN(tmp)
 !$ACC KERNELS PRESENT(a,b,mult)
       do  i=1,n
-         tmp = tmp + a(i)*b(i)*mult(i)
+         tmp(1) = tmp(1) + a(i)*b(i)*mult(i)
       enddo
 !$ACC END KERNELS
-
-!$ACC ENTER DATA CREATE(work)
       call gop_acc(tmp,work,'+  ',1)
-!$ACC EXIT DATA DELETE(work)
+!$ACC END DATA
 
-      glsc3_acc = tmp
+      glsc3_acc = tmp(1)
       return
       end
 
@@ -2013,7 +2011,9 @@ c-----------------------------------------------------------------------
       enddo
 !$ACC END KERNELS
       tmp(1)=tsum
+!$ACC DATA COPYIN(tmp,work)
       call gop_acc(tmp,work,'+  ',1)
+!$ACC END DATA
       glsum = tmp(1)
       return
       END

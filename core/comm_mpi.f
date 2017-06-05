@@ -201,6 +201,7 @@ c     https://www.olcf.ornl.gov/tutorials/gpudirect-mpich-enabled-cuda/#OpenACC_
          write(6,*) nid,' OP ',op,' not supported.  ABORT in GOP.'
          call exitt
       endif
+
 !$ACC UPDATE DEVICE(w)
 
       call copy_acc(x,w,n)
